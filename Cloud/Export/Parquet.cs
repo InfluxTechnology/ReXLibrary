@@ -17,8 +17,14 @@ namespace Cloud.Export
         {
             int partId = 1;
             string uploadId = "";
+            bool useFullDateTime = false;
+            if (Config.ConfigJson.Parquet.enabled == true && Config.ConfigJson.Parquet.ContainsKey("use_datetime"))
+            {
+                useFullDateTime = Config.ConfigJson.Parquet.use_datetime;                
+            }
 
-            void WriteChunk(ParquetStream ms)
+
+                void WriteChunk(ParquetStream ms)
             {
                 long offset = ms.offset + ms.baseLength;
                 ms.baseSeek(0, SeekOrigin.Begin);
@@ -67,6 +73,8 @@ namespace Cloud.Export
                 ProcessingRules = rules
             };
             var ddcParquet = rxd.ToDoubleData(exportParquet);
+            ddcParquet.DefaultCsvDateFormat = useFullDateTime ? TimeFormatType.DateTime : TimeFormatType.Seconds;
+
             if (ddcParquet is null)
             {
                 log?.Log($"Double Data is null. No data for Parquet export");
