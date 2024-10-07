@@ -9,6 +9,5 @@ namespace RXD.Objects
         public UInt32 RawTimestamp { get; set; }
 
         public double FloatTimestamp { get; set; }
-
     }
 }

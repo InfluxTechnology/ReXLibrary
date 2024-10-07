@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
 
 namespace RXD.Blocks
@@ -110,6 +111,7 @@ namespace RXD.Blocks
         {
             AddProperty(propEnum.ToString(), propType, propSubElementCountLinkPropertyEnum.ToString(), DefaultValue: DefaultValue);
         }
+
         #endregion
 
         internal bool isHelperProperty(string propName)
@@ -149,7 +151,6 @@ namespace RXD.Blocks
                     foreach (KeyValuePair<string, PropertyData> property in this)
                     {
                         Type propType = property.Value.PropType.IsEnum ? Enum.GetUnderlyingType(property.Value.PropType) : property.Value.PropType;
-
                         if (propType == typeof(string))
                             SetProperty(property.Key, new string(br.ReadChars(property.Value.Size)));
                         else if (propType.IsArray)
@@ -173,6 +174,10 @@ namespace RXD.Blocks
                             h.Free();
                             SetProperty(property.Key, propdata);
                         }
+                        else if (propType == typeof(IPAddress))
+                        {
+                            SetProperty(property.Key, new IPAddress(br.ReadUInt32()));
+                        }
                         else
                         {
                             byte[] data = br.ReadBytes(property.Value.Size);
@@ -182,7 +187,6 @@ namespace RXD.Blocks
                         }
                     }
             }
-        }
-
+        }       
     }
 }

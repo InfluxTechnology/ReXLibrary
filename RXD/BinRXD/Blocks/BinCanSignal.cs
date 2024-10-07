@@ -1,5 +1,6 @@
 ﻿using InfluxShared.FileObjects;
 using InfluxShared.Objects;
+using RXD.Base;
 using System;
 
 namespace RXD.Blocks
@@ -53,6 +54,14 @@ namespace RXD.Blocks
             set => data.SetProperty(index.ToString(), value);
         }
         #endregion
+
+        public override string GetUnits => BinRXD.TCMode switch
+        {
+            TCModeUnits.Disabled => base.GetUnits,
+            TCModeUnits.Celsius => "deg C",
+            TCModeUnits.Farenheit => "deg F",
+            TCModeUnits.Kelvin => "deg K",
+        };
 
         public override ChannelDescriptor GetDataDescriptor => new ChannelDescriptor()
         {

@@ -18,11 +18,13 @@ namespace InfluxShared.Objects
         public long elementCount => Length / elementSize;
 
         private bool disposedValue;
+        private byte[] readArr;
 
         public DiskStorage(string filePath) : base(filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite, 4096, FileOptions.DeleteOnClose)
         {
             elementSize = Marshal.SizeOf(typeof(T));
             FilePath = filePath;
+            readArr = new byte[elementSize];
         }
 
         #region Destructors
@@ -98,11 +100,10 @@ namespace InfluxShared.Objects
 
         public bool Read(ref T value)
         {
-            byte[] tmp = new byte[elementSize];
-            if (Read(tmp, 0, elementSize) != elementSize)
+            if (Read(readArr, 0, elementSize) != elementSize)
                 return false;
 
-            value = tmp.ConvertTo<T>();
+            value = readArr.ConvertTo<T>();
             return true;
         }
 

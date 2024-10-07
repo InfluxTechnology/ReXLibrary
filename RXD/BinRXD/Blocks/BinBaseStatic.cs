@@ -47,6 +47,9 @@ namespace RXD.Blocks
         DAQITEM = 37,
         TC = 38,
         LINSignal = 39,
+        Config_WiFi = 40,
+        UDS = 41,
+
     };
 
     public enum RecordType : byte
@@ -72,6 +75,7 @@ namespace RXD.Blocks
             { BlockType.Config, typeof(BinConfig) },
             { BlockType.Config_Ftp, typeof(BinConfigFTP) },
             { BlockType.Config_Mobile, typeof(BinConfigMobile) },
+            { BlockType.Config_WiFi, typeof(BinConfigWiFi) },
 
             // Data blocks
             { BlockType.CANInterface, typeof(BinCanInterface) },
@@ -110,6 +114,8 @@ namespace RXD.Blocks
             { BlockType.DAQITEM, typeof(BinDAQItem) },
             { BlockType.TC, typeof(BinTC) },
             { BlockType.LINSignal, typeof(BinLinSignal) },
+            { BlockType.UDS, typeof(BinUDS) },
+
         };
 
         /// <summary>
@@ -124,6 +130,7 @@ namespace RXD.Blocks
             { BlockType.Config_Ftp, RecordType.Unknown },
             { BlockType.Config_Mobile, RecordType.Unknown },
             { BlockType.CONFIG_S3, RecordType.Unknown },
+            { BlockType.Config_WiFi, RecordType.Unknown },
 
             // Data blocks
             { BlockType.CANInterface, RecordType.Unknown },
@@ -161,6 +168,7 @@ namespace RXD.Blocks
             { BlockType.DAQITEM, RecordType.Unknown },
             { BlockType.TC, RecordType.Unknown },
             { BlockType.LINSignal, RecordType.MessageData },
+            { BlockType.UDS, RecordType.Unknown },
 
         };
 

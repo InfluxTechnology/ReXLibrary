@@ -66,8 +66,8 @@ namespace RXD.Base
 
             bool ContainOverlap = this.Any(b => b.Value.TimeOverlap);
             var bins = ContainOverlap ? this.Where(b => b.Value.DataFound && b.Value.TimeOverlap) : this.Where(b => b.Value.DataFound);
-            FirstTimestamp = (UInt32?)bins.Min(b => b.Value.FirstTimestamp) ?? 0;
-            UInt32 LastTimestamp = (UInt32?)bins.Max(b => b.Value.LastTimestamp) ?? 0;
+            if (bins.Count() > 0)
+                FirstTimestamp = (UInt32?)bins.Min(b => b.Value.FirstTimestamp) ?? 0;
 
             if (ContainOverlap)
             {

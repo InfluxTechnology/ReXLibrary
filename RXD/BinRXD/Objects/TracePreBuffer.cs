@@ -12,6 +12,6 @@
 
         public string strDLC => "";
 
-        public string strData => "Trigger event";
+        public string strData { get; set; } = "Trigger event";
     }
 }

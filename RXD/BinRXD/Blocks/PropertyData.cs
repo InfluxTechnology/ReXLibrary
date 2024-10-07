@@ -1,6 +1,7 @@
 ﻿using InfluxShared.Generic;
 using InfluxShared.Helpers;
 using System;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -100,6 +101,8 @@ namespace RXD.Blocks
                     return string.Empty;
                 else if (PropType.IsArray)
                     return Array.CreateInstance(PropType.GetElementType(), SubElementCount.Value);
+                else if (PropType == typeof(IPAddress))
+                    return IPAddress.Parse("0.0.0.0");
                 else
                     return Activator.CreateInstance(PropType);
             }
@@ -123,6 +126,8 @@ namespace RXD.Blocks
                 return Encoding.ASCII.GetBytes(Value);
             else if (PropType.IsArray)
                 return PropType.GetElementType().IsEnum ? Bytes.EnumArrayToBytes(Data) : Bytes.ArrayToBytes(Data);
+            else if (PropType == typeof(IPAddress)) 
+                return Value.GetAddressBytes();
             else
             {
                 object obj = PropType.IsEnum ? Convert.ChangeType(Data, Enum.GetUnderlyingType(PropType)) : Data;

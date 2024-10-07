@@ -12,4 +12,17 @@
         NO,
         UDS
     }
+
+    public enum RealTimeSourceType : byte
+    {
+        No,
+        Mobile,
+        NTP
+    }
+
+    public enum RemoteStorageType : byte
+    {
+        FTP,
+        S3
+    }
 }

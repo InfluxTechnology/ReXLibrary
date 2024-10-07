@@ -32,6 +32,15 @@ namespace RXD.DataRecords
         DIR = 1 << 4,
     }
 
+    public enum PackType
+    {
+        NotPacked = 0,
+        J1939,
+        UDS,
+        UDS22,
+        UDS23,
+    }
+
     internal class RecCanTrace : RecBase
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
@@ -45,6 +54,8 @@ namespace RXD.DataRecords
         internal new DataRecord data { get => (DataRecord)base.data; set => base.data = value; }
 
         internal override UInt32 RawTimestamp { get => data.Timestamp; set => data.Timestamp = value; }
+
+        internal PackType CustomType;
 
         public RecCanTrace()
         {
@@ -94,6 +105,8 @@ namespace RXD.DataRecords
         public override TraceCollection ToTraceRow(UInt32 TimestampPrecision)
         {
             var frames = base.ToTraceRow(TimestampPrecision);
+            if (NotVisible)
+                return frames;
 
             TraceCan trace = new TraceCan()
             {

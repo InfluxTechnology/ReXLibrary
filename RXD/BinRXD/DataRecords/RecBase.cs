@@ -40,6 +40,7 @@ namespace RXD.DataRecords
         internal BinBase LinkedBin = null;
 
         internal bool NotExportable = false;
+        internal bool NotVisible = false;
 
         public RecBase()
         {

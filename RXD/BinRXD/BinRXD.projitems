@@ -9,6 +9,9 @@
     <Import_RootNamespace>RXD</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Base\FrameCollectors\IFrameCollector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Base\FrameCollectors\J1939FrameCollector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Base\FrameCollectors\ModeFrameCollector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\PreBufferCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\RXDataSyncReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\RXDLogger.cs" />
@@ -18,6 +21,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinConfigFTP.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinConfigMobile.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinConfigS3.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinConfigWiFi.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinDAQ.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinDAQItem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinDaqFile.cs" />
@@ -30,10 +34,10 @@
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinLinMessage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinLinSignal.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinTC.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Blocks\BinUDS.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecLinTrace.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecPreBuffer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\J1939.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Base\MultiFrameData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\RXD.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\BlockCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Base\RXDataReader.cs" />
@@ -71,7 +75,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecCanTraceError.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecCanTrace.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Base\MultiFrameCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecMessage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecHeader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DataRecords\RecordCollection.cs" />

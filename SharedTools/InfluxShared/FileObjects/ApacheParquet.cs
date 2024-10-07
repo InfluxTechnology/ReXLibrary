@@ -102,7 +102,12 @@ namespace InfluxShared.FileObjects
                 ddata.InitReading();
 
                 Dictionary<string, int> dict = new Dictionary<string, int>();
-                List<DataField> fields = [new DataField<double>("Time")];
+                List<DataField> fields = [
+                    ddata.DefaultCsvDateFormat == TimeFormatType.DateTime ? 
+                    new DateTimeDataField("Time", DateTimeFormat.DateAndTime) : 
+                    new DataField<double>("Time")
+                ];
+                //List<DataField> fields = [new DataField<double>("Time")];
                 foreach (var data in ddata)
                 {
                     if (dict.ContainsKey(data.ChannelName))
@@ -147,8 +152,20 @@ namespace InfluxShared.FileObjects
                 async void WriteData()
                 {
                     using (ParquetRowGroupWriter groupWriter = writer.CreateRowGroup())
-                        for (int i = 0; i < schema.DataFields.Length; i++)
+                    {
+                        if (ddata.DefaultCsvDateFormat == TimeFormatType.DateTime)
+                        {
+                            DateTime[] times = new DateTime[matrix[0].Length];
+                            for (int ti = 0; ti < matrix[0].Length; ti++)
+                                times[ti] = DateTime.FromOADate(ddata.RealTime.ToOADate() + matrix[0][ti] / 86400);
+                            await groupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[0], times));
+                        }
+                        else
+                            await groupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[0], matrix[0]));
+
+                        for (int i = 1; i < schema.DataFields.Length; i++)
                             await groupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[i], matrix[i]));
+                    }
 
                     if (ps.baseLength >= OnChunkSizeTrigger)
                         OnChunk(ps);
@@ -174,6 +191,7 @@ namespace InfluxShared.FileObjects
                                     WriterTask = Task.Run(() => WriteData());
                             }
                             Values = ddata.GetValues();
+
                             ProgressCallback?.Invoke((int)(ddata.ReadingProgress * 100));
                         } while (Values != null);
 
