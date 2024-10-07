@@ -15,6 +15,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -46,6 +47,7 @@ namespace RXD.Base
         public static readonly string SortedSuffix = "_sorted";
         public static readonly bool AllowSorting = false;
         public static bool DoSort = AllowSorting;
+        public static TCModeUnits TCMode = TCModeUnits.Disabled;
 
         public static string EncryptionContainerName = "ReXgen";
         public static byte[] EncryptionKeysBlob = null;
@@ -332,7 +334,7 @@ namespace RXD.Base
                     DataOffset = (DataOffset + 0x1ff) & ~(UInt32)0x1ff;
                 }
 
-                DetectLowestTimestamp();
+                DetectFirstTimestamp();
                 if (SortFile(out string sortfn))
                     reloadSorted = sortfn;
                 BinRXD.DoSort = AllowSorting;
@@ -351,7 +353,7 @@ namespace RXD.Base
             {
                 using (MemoryStream ms = new MemoryStream())
                 {
-                    var cfgblocks = new BinBase[] { Config, ConfigFTP, ConfigMobile, ConfigS3 };
+                    var cfgblocks = new BinBase[] { Config, ConfigFTP, ConfigMobile, ConfigS3, ConfigWiFi };
                     foreach (var cfgbin in cfgblocks)
                         if (cfgbin is not null)
                         {
@@ -653,7 +655,7 @@ namespace RXD.Base
                             if (!FirstTimestampRead)
                             {
                                 FirstTimestampRead = true;
-                                FileTimestamp = (uint)(InitialTimestamp == 0 ? LowestTimestamp : Math.Min(InitialTimestamp, frame.data.Timestamp));
+                                FileTimestamp = (uint)(InitialTimestamp == 0 ? FirstTimestamp : Math.Min(InitialTimestamp, frame.data.Timestamp));
                             }
 
                             void CheckTimeOverlap(ref UInt64 LastTimestamp, ref UInt64 TimeOffset)
@@ -709,10 +711,11 @@ namespace RXD.Base
                                     {
                                         WriteMdfFrame(rec.ConvertToMdfMessageFrame(groupid, DLC), rec.LinkedBin.RecType);
                                         if (fmsg is ExportDbcMessage msg)
-                                            if (msg.multiplexor is not null)
-                                                if (msg.multiplexorData.ExtractHex(rec.VariableData, out BinaryData.HexStruct hex))
-                                                    if ((midx = msg.multiplexorMap.Keys.ToList().IndexOf((UInt16)msg.multiplexorData.CalcValue(ref hex))) != -1)
-                                                        WriteMdfFrame(rec.ConvertToMdfMessageFrame((ushort)msg.multiplexorGroups[midx], DLC), rec.LinkedBin.RecType);
+                                            foreach (var mp in msg.MultiplexDict)
+                                                if (mp.Value.multiplexor is not null)
+                                                    if (mp.Value.multiplexorData.ExtractHex(rec.VariableData, out BinaryData.HexStruct hex))
+                                                        if ((midx = mp.Value.multiplexorMap.Keys.ToList().IndexOf((UInt64)mp.Value.multiplexorData.CalcValue(ref hex))) != -1)
+                                                            WriteMdfFrame(rec.ConvertToMdfMessageFrame((ushort)mp.Value.multiplexorGroups[midx], DLC), rec.LinkedBin.RecType);
                                     }
                             }
                             ProgressCallback?.Invoke((int)dr.GetProgress);
@@ -803,7 +806,7 @@ namespace RXD.Base
             for (var i = 0; i <= UInt16.MaxValue; i++)
             {
                 LastTimestamp[i] = 0;
-                TimeOffset[i] = 0;
+                TimeOffset[i] = (this.TryGetValue(i, out BinBase b) && b.AddOverlap) ? 0x100000000 : (UInt64)0;
             }
 
             bool isLastBlock = false;
@@ -832,10 +835,10 @@ namespace RXD.Base
                 using (RXDataReader dr = new RXDataReader(this))
                 {
                     UInt32 InitialTimestamp = dr.GetFilePreBufferInitialTimestamp;
-                    FileTimestamp = InitialTimestamp == 0 ? LowestTimestamp : InitialTimestamp;
+                    FileTimestamp = InitialTimestamp == 0 ? FirstTimestamp : InitialTimestamp;
                     //ddata.FirstTimestamp = InitialTimestamp == 0 ? double.NaN : (InitialTimestamp * TimestampCoeff);
                     if (settings.ProcessingRules is not null)
-                        settings.ProcessingRules.FirstTime = (LowestTimestamp - FileTimestamp) * TimestampCoeff;
+                        settings.ProcessingRules.FirstTime = (FirstTimestamp - FileTimestamp) * TimestampCoeff;
 
                     if (settings.SignalsDatabase is not null && settings.SignalsDatabase.dbcCollection is not null)
                         foreach (var msg in settings.SignalsDatabase.dbcCollection)
@@ -858,17 +861,22 @@ namespace RXD.Base
                                         if (FindMessageFrameID(canrec, out int id))
                                         {
                                             ExportDbcMessage busMsg = settings.SignalsDatabase.dbcCollection[id];
-                                            if (busMsg.Signals.Count > 0)
+
+                                            if (!UDSMap.TryGetValue(canrec.CustomType, out byte canuds))
+                                                break;
+
+                                            var Signals = busMsg.Signals.Where(s => s.UDS == canuds).ToList();
+                                            if (Signals.Count > 0)
                                             {
                                                 byte SA = (byte)((busMsg.Message.MsgType == DBCMessageType.J1939PG) ? canrec.data.CanID.Source : 0xFF);
 
-                                                var mode = busMsg.GetMode();
+                                                var mode = busMsg.GetMode(canuds);
                                                 double modeval = double.NaN;
                                                 double lastval = double.NaN;
-                                                for (int i = 0; i < busMsg.Signals.Count; i++)
+                                                for (int i = 0; i < Signals.Count; i++)
                                                 {
-                                                    var sig = busMsg.Signals[i];
-                                                    var obj = ddata.Object(sig as BasicItemInfo, (1u << 30) | ((uint)i << 16) | (uint)id, SA);
+                                                    var sig = Signals[i];
+                                                    var obj = ddata.Object(sig as BasicItemInfo, (1u << 30) | ((uint)busMsg.Signals.IndexOf(sig) << 16) | (uint)id, SA);
                                                     obj.BusChannel = $"CAN{canrec.BusChannel}";
 
                                                     if (i == 1 && mode is not null)
@@ -948,7 +956,7 @@ namespace RXD.Base
                 for (int i = 0; i < tc.Count; i++)
                 {
                     if (Double.IsNaN(FileTimestamp))
-                        FileTimestamp = (InitialTimestamp == 0 ? LowestTimestamp : InitialTimestamp) * TimestampCoeff;
+                        FileTimestamp = (InitialTimestamp == 0 ? FirstTimestamp : InitialTimestamp) * TimestampCoeff;
                     //FileTimestamp = (InitialTimestamp == 0 ? LowestTimestamp : Math.Min(LowestTimestamp, InitialTimestamp)) * TimestampCoeff;
 
                     if ((tc[i] as IRecordTimeAdapter).FloatTimestamp < LastTimestamp)
@@ -1108,7 +1116,8 @@ namespace RXD.Base
                             CreateBlock(xml, Config),
                             CreateBlock(xml, ConfigFTP),
                             CreateBlock(xml, ConfigMobile),
-                            CreateBlock(xml, ConfigS3)
+                            CreateBlock(xml, ConfigS3),
+                            CreateBlock(xml, ConfigWiFi),
                         });
 
                     XElement groupNode;
@@ -1186,6 +1195,13 @@ namespace RXD.Base
                             }
                         }
                     }
+                    else if (prop.Value.PropType == typeof(IPAddress))
+                    {
+                        XElement propEl = XmlHandler.Child(node, prop.Value.Name);
+                        if (propEl == null)
+                            continue;
+                        prop.Value.Value = IPAddress.Parse(propEl.Value);
+                    }
                     else
                     {
                         XElement propEl = XmlHandler.Child(node, prop.Value.Name);
@@ -1261,6 +1277,8 @@ namespace RXD.Base
                 ConfigFTP = (BinConfigFTP)ReadConfigBin(xml, Blocks.BlockType.Config_Ftp);
                 ConfigMobile = (BinConfigMobile)ReadConfigBin(xml, Blocks.BlockType.Config_Mobile);
                 ConfigS3 = (BinConfigS3)ReadConfigBin(xml, Blocks.BlockType.CONFIG_S3);
+                ConfigWiFi = (BinConfigWiFi)ReadConfigBin(xml, Blocks.BlockType.Config_WiFi);
+
 
                 foreach (XElement group in xml.blocksNode.Elements())
                     foreach (XElement bin in group.Elements())

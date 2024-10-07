@@ -8,18 +8,27 @@ using System.Linq;
 
 namespace RXD.Base
 {
+    public enum TCModeUnits { Disabled, Celsius, Farenheit, Kelvin }
+
     public class BlockCollection : Dictionary<Int64, BinBase>
     {
         internal BinConfig Config;
         internal BinConfigFTP ConfigFTP;
         internal BinConfigMobile ConfigMobile;
         internal BinConfigS3 ConfigS3;
+        internal BinConfigWiFi ConfigWiFi;
         internal PreBufferCollection PreBuffers = null;
         internal double TimestampCoeff;
-        internal UInt32 LowestTimestamp;
-        internal bool LowestTimestampDetected = false;
+        internal UInt32 FirstTimestamp;
+        internal bool FirstTimestampDetected = false;
         private UInt16 FUID = 0;  // Auto Increment ID
         public UInt16 NewUID { get { return ++FUID; } }
+
+        public Dictionary<PackType, byte> UDSMap = new() {
+            {PackType.NotPacked, 0},
+            {PackType.UDS22, 0x22},
+            {PackType.UDS23, 0x23},
+        };
 
         public BlockCollection()
         {
@@ -37,34 +46,44 @@ namespace RXD.Base
                 ConfigMobile = (BinConfigMobile)block;
             else if (block.BinType == BlockType.CONFIG_S3)
                 ConfigS3 = (BinConfigS3)block;
+            else if (block.BinType == BlockType.Config_WiFi)
+                ConfigWiFi = (BinConfigWiFi)block;
             else
                 Add(block.header.uniqueid, block);
         }
 
-        internal void DetectLowestTimestamp()
+        internal void DetectFirstTimestamp()
         {
-            if (LowestTimestampDetected)
+            if (FirstTimestampDetected)
                 return;
 
-            LowestTimestampDetected = true;
+            FirstTimestampDetected = true;
             using (RXDataReader dr = new RXDataReader(this as BinRXD, ReadLogic.UpdateLowestTimestamp))
                 while (dr.ReadNext()) ;
 
-            bool firsttime = true;
-            foreach (var bin in this)
-                if (bin.Value.DataFound)
+            //var bins = this.Where(b => b.Value.DataFound);
+            //LowestTimestamp = (UInt32?)bins.Min(b => b.Value.FirstTimestamp) ?? 0;
+
+            bool ContainOverlap = this.Any(b => b.Value.TimeOverlap);
+            var bins = ContainOverlap ? this.Where(b => b.Value.DataFound && b.Value.TimeOverlap) : this.Where(b => b.Value.DataFound);
+            FirstTimestamp = (UInt32?)bins.Min(b => b.Value.FirstTimestamp) ?? 0;
+            UInt32 LastTimestamp = (UInt32?)bins.Max(b => b.Value.LastTimestamp) ?? 0;
+
+            if (ContainOverlap)
+            {
+                var BinsAfterOverlap = this.Where(b => b.Value.DataFound && !b.Value.TimeOverlap && b.Value.LastTimestamp < FirstTimestamp);
+                foreach (var b in BinsAfterOverlap)
+                    b.Value.AddOverlap = true;
+            }
+
+            /*/foreach (var bin in bins)
+                if (firsttime)
                 {
-                    if (firsttime)
-                    {
-                        LowestTimestamp = bin.Value.LowestTimestamp;
-                        //HighestTimestamp = bin.Value.HighestTimestamp;
-                        firsttime = false;
-                    }
-                    else if (bin.Value.LowestTimestamp < LowestTimestamp)
-                        LowestTimestamp = bin.Value.LowestTimestamp;
-                    /*else if (bin.Value.LowestTimestamp > HighestTimestamp)
-                        HighestTimestamp = bin.Value.HighestTimestamp;*/
+                    LowestTimestamp = bin.Value.FirstTimestamp;
+                    firsttime = false;
                 }
+                else if (bin.Value.FirstTimestamp < LowestTimestamp)
+                    LowestTimestamp = bin.Value.FirstTimestamp;*/
         }
 
         public void OffsetTimestamps(Int64 TimeOffset)
@@ -76,11 +95,11 @@ namespace RXD.Base
 
             using (RXDataReader dr = new RXDataReader(this as BinRXD, ReadLogic.OffsetTimestamps))
             {
-                dr.TimeOffset = TimeOffset - LowestTimestamp;
+                dr.TimeOffset = TimeOffset - FirstTimestamp;
                 while (dr.ReadNext()) ;
             }
 
-            LowestTimestamp = (UInt32)TimeOffset;
+            FirstTimestamp = (UInt32)TimeOffset;
         }
 
         public UInt32 GetHighestTimestampInBlockAt(Int64 fileposTimeOffset)
@@ -165,8 +184,21 @@ namespace RXD.Base
                 else
                     sig[BinCanSignal.BinProp.Name] = TCNames[i - 1];
 
-                sig[BinCanSignal.BinProp.ParA] = 0.0625;
-                sig[BinCanSignal.BinProp.ParB] = 0;
+                if (BinRXD.TCMode == TCModeUnits.Celsius)
+                {
+                    sig[BinCanSignal.BinProp.ParA] = 0.0625;
+                    sig[BinCanSignal.BinProp.ParB] = 0;
+                }
+                else if (BinRXD.TCMode == TCModeUnits.Farenheit)
+                {
+                    sig[BinCanSignal.BinProp.ParA] = 0.1125;
+                    sig[BinCanSignal.BinProp.ParB] = 32;
+                }
+                else if (BinRXD.TCMode == TCModeUnits.Kelvin)
+                {
+                    sig[BinCanSignal.BinProp.ParA] = 0.0625;
+                    sig[BinCanSignal.BinProp.ParB] = 273.15;
+                }
                 sig[BinCanSignal.BinProp.StartBit] = 0;
                 sig[BinCanSignal.BinProp.BitCount] = 16;
                 sig[BinCanSignal.BinProp.Endian] = SignalByteOrder.INTEL;

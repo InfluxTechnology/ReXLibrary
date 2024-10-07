@@ -35,8 +35,11 @@ namespace RXD.Blocks
         public virtual string GetUnits => data.TryGetValue("units", out PropertyData units) ? units.Value : "";
         internal virtual Guid GetGUID => data.TryGetValue("guid", out PropertyData guid) ? guid.Value : null;
         public virtual ChannelDescriptor GetDataDescriptor => null;
-        internal UInt32 LowestTimestamp = 0;
+        internal UInt32 FirstTimestamp = 0;
+        internal UInt32 LastTimestamp = 0;
+        internal bool TimeOverlap = false;
         internal bool DataFound = false; // Used for validate detected lowest timestamp
+        internal bool AddOverlap = false;
         internal virtual List<string> Inputs { get; set; } = new List<string>();
         internal virtual List<string> Outputs { get; set; } = new List<string>();
         public void AddInput(string prop)

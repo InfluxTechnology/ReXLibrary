@@ -1,4 +1,5 @@
 ﻿using InfluxShared.Generic;
+using RXD.Base.FrameCollectors;
 using RXD.Blocks;
 using RXD.DataRecords;
 using System;
@@ -42,7 +43,10 @@ namespace RXD.Base
         public UInt64 SectorsParsed = 0;
         internal RecordCollection MessageCollection = null;
         public virtual RecordCollection Messages { get => MessageCollection; set => MessageCollection = value; }
-        public MultiFrameCollection MultiFrames = new MultiFrameCollection();
+        internal List<IFrameCollector> FrameCollectorList = [
+            new J1939FrameCollector(),
+            new ModeFrameCollector(),
+            ];
         internal Int64 TimeOffset;
 
         internal protected UInt32 DataSectorStart = 0;
@@ -265,11 +269,19 @@ namespace RXD.Base
             while ((long)source < (long)endptr)
             {
                 RecRaw rec = RecRaw.Read(ref source);
-                if (collection.TryGetValue(rec.header.UID, out BinBase bin) && !bin.DataFound)
+                if (collection.TryGetValue(rec.header.UID, out BinBase bin))
                 {
-                    bin.LowestTimestamp = BitConverter.ToUInt32(rec.Data, 0);
-                    //collection[rec.header.UID].HighestTimestamp = tmpTime;
-                    bin.DataFound = true;
+                    var timestamp = BitConverter.ToUInt32(rec.Data, 0);
+                    if (bin.DataFound && timestamp < bin.LastTimestamp)
+                        bin.TimeOverlap = true;
+
+                    bin.LastTimestamp = timestamp;
+
+                    if (!bin.DataFound)
+                    {
+                        bin.FirstTimestamp = bin.LastTimestamp;
+                        bin.DataFound = true;
+                    }
                 }
             }
         }
@@ -398,43 +410,9 @@ namespace RXD.Base
         void CheckForMultiFrame()
         {
             for (int i = 0; i < MessageCollection.Count; i++)
-            {
-                RecBase record = MessageCollection[i];
-                if (record.LinkedBin != null)
-                    if (record.LinkedBin.BinType == BlockType.CANMessage && record.LinkedBin.RecType == RecordType.CanTrace)
-                    {
-                        RecCanTrace msg = record as RecCanTrace;
-
-                        //if (msgBlock[BinCanMessage.BinProp.isJ1939] == true)
-                        if ((msg.data.Flags & J1939.pgnFlagsMask) == J1939.pgnFlagsValue)
-                        {
-                            if (J1939.isPgnConnectMessage(msg))
-                            {
-                                MultiFrameData data = MultiFrames.AddOrGetJ1939(msg);
-                                if (data.Count > 0)
-                                {
-                                    //MessageBox.Show("Previous buffer untriggered");
-                                }
-                                data.Clear();
-                                data.Add(msg);
-                            }
-                            else if (J1939.isPgnDataTransferMessage(msg))
-                            {
-                                MultiFrameData data = MultiFrames.GetJ1939(msg.data.CanID);
-                                if (data != null)
-                                {
-                                    data.Add(msg);
-
-                                    if (data.isCompleted)
-                                    {
-                                        MessageCollection.Insert(i + 1, data.PackJ1939Message());
-                                        data.Clear();
-                                    }
-                                }
-                            }
-                        }
-                    }
-            }
+                foreach (var collector in FrameCollectorList)
+                    if (collector.TryCollect(MessageCollection[i], this))
+                        break;
         }
 
         bool isActive()

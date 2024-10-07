@@ -25,7 +25,7 @@ namespace Influx.Shared.Helpers
         {
             public string Filter;
             public string Extension;
-            public string Name;
+            public string Name = string.Empty;
             public override string ToString() => Filter.Split('|')[0];
             public TypeFlags Flags;
             public bool supportMerge => Flags.HasFlag(TypeFlags.AllowMerge);
@@ -450,15 +450,15 @@ namespace Influx.Shared.Helpers
                             }
                         }
 
+                        bool FullDateTime = outputFormat.Contains("_FullDateTime");
+                        outputFormat = outputFormat.Replace("_FullDateTime", "");
+
                         if (ext.Equals(Matlab.Extension, StringComparison.OrdinalIgnoreCase))
                             return BuildChannels().ToMatlab;
                         else if (ext.Equals(ApacheParquet.Extension, StringComparison.OrdinalIgnoreCase))
-                            return BuildChannels().ToApacheParquet;
+                            return BuildChannels(FullDateTime ? TimeFormatType.DateTime : TimeFormatType.Seconds).ToApacheParquet;
                         else if (ext.Equals(DoubleDataCollection.Extension, StringComparison.OrdinalIgnoreCase))
                         {
-                            bool FullDateTime = outputFormat.Contains("_FullDateTime");
-                            outputFormat = outputFormat.Replace("_FullDateTime", "");
-
                             if (outputFormat.Equals("InfluxDB", StringComparison.OrdinalIgnoreCase))
                                 return BuildChannels(FullDateTime ? TimeFormatType.DateTime : TimeFormatType.Seconds).ToInfluxDBCSV;
                             else if (outputFormat.Equals("Regional", StringComparison.OrdinalIgnoreCase))
@@ -551,15 +551,15 @@ namespace Influx.Shared.Helpers
                                 return channels;
                         }
 
+                        bool FullDateTime = outputFormat.Contains("_FullDateTime");
+                        outputFormat = outputFormat.Replace("_FullDateTime", "");
+
                         if (ext.Equals(Matlab.Extension, StringComparison.OrdinalIgnoreCase))
                             return BuildChannels().ToMatlab;
                         else if (ext.Equals(ApacheParquet.Extension, StringComparison.OrdinalIgnoreCase))
-                            return BuildChannels().ToApacheParquet;
+                            return BuildChannels(FullDateTime ? TimeFormatType.DateTime : TimeFormatType.Seconds).ToApacheParquet;
                         else if (ext.Equals(DoubleDataCollection.Extension, StringComparison.OrdinalIgnoreCase))
                         {
-                            bool FullDateTime = outputFormat.Contains("_FullDateTime");
-                            outputFormat = outputFormat.Replace("_FullDateTime", "");
-
                             if (outputFormat.Equals("InfluxDB", StringComparison.OrdinalIgnoreCase))
                                 return BuildChannels(FullDateTime ? TimeFormatType.DateTime : TimeFormatType.Seconds).ToInfluxDBCSV;
                             else if (outputFormat.Equals("Regional", StringComparison.OrdinalIgnoreCase))
