@@ -183,11 +183,11 @@ namespace InfluxShared.FileObjects
         [XmlElement("FACTOR")]
         public double Factor
         {
-            get => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffA : 1;
+            get => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffB : 1;
             set
             {
                 Conversion.Type = ConversionType.Formula;
-                Conversion.Formula.CoeffA = value;
+                Conversion.Formula.CoeffB = value;
             }
         }
 
@@ -203,11 +203,11 @@ namespace InfluxShared.FileObjects
         [XmlElement("OFFSET")]
         public double Offset
         {
-            get => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffB : 1;
+            get => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffC : 1;
             set
             {
                 Conversion.Type = ConversionType.Formula;
-                Conversion.Formula.CoeffB = value;
+                Conversion.Formula.CoeffC = value;
             }
         }
 
@@ -232,7 +232,7 @@ namespace InfluxShared.FileObjects
         public DBCByteOrder ByteOrder { get; set; }
 
         [XmlIgnore]
-        public uint Mode { get; set; }
+        public UInt64 Mode { get; set; }
         [XmlIgnore]
         public DBCValueType ValueType { get; set; }
 
@@ -254,6 +254,8 @@ namespace InfluxShared.FileObjects
         };
         [XmlIgnore]
         public bool Log { get; set; }
+        [XmlIgnore]
+        public byte UDS { get; set; }
         [XmlIgnore]
         public object TagObject { get; set; }
 
@@ -289,6 +291,9 @@ namespace InfluxShared.FileObjects
 
         [XmlElement("RX_IDENT")]
         public uint RxIdent { get; set; }
+
+        [XmlElement("UDS_SERVICE_ID")]
+        public byte UDSServiceID { get => UDS; set => UDS = value; }
 
         public PollingItem() { }
 
