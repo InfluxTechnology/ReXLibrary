@@ -160,7 +160,7 @@ namespace InfluxShared.FileObjects
             ReadNext();
         }
 
-        public bool ReadNext()
+        public bool ReadNext(bool UpdateProgress = true)
         {
             void SetEOF()
             {
@@ -186,7 +186,8 @@ namespace InfluxShared.FileObjects
             }
             finally
             {
-                ReadProgress = TimeStream.Length == 0 ? 1 : TimeStream.Position / (double)TimeStream.Length;
+                if (UpdateProgress)
+                    ReadProgress = TimeStream.Length == 0 ? 1 : TimeStream.Position / (double)TimeStream.Length;
             }
         }
 

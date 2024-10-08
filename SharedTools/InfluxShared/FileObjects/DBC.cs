@@ -11,114 +11,7 @@ namespace InfluxShared.FileObjects
     public enum DBCMessageType : byte { Standard, Extended, CanFDStandard, CanFDExtended, J1939PG, Lin, KanCan, reserved }
     public enum DBCValueType : byte { Unsigned, Signed, IEEEFloat, IEEEDouble, ASCII, BYTES }
     public enum DBCSignalType : byte { Standard, Mode, ModeDependent }
-
-    /* Unmerged change from project 'Oscilloscope'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
-
-    /* Unmerged change from project 'RXDDemo'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
-
-    /* Unmerged change from project 'ReXusbcanDemo'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
-
-    /* Unmerged change from project 'ModuleConfigurator'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
-
-    /* Unmerged change from project 'ReXdeskConvert'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
-
-    /* Unmerged change from project 'RxLibrary'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
-
-    /* Unmerged change from project 'RxdToolkit'
-    Before:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    After:
-        public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
-
-        public class DbcSelection
-    */
     public enum DBCFileType : byte { None, Generic, CAN, CANFD, LIN, J1939, Ethernet, FlexRay, KanCan };
-
-
 
     public class DbcSelection
     {
@@ -137,13 +30,15 @@ namespace InfluxShared.FileObjects
             DBCSignalType.ModeDependent => "Mode dependent",
             _ => ""
         };
-        public UInt32 Mode { get; set; }   //If the signal is Mode Dependent
+        public UInt64 Mode { get; set; }   //If the signal is Mode Dependent
         public DBCByteOrder ByteOrder { get; set; }
         public DBCValueType ValueType { get; set; }
         public bool Log { get; set; }
+        public byte UDS { get; set; } = 0;
+
         public override string ToString() => Name;
-        public double Factor => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffB : 1;
-        public double Offset => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffC : 0;
+        public double Factor => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffB / Conversion.Formula.CoeffF : 1;
+        public double Offset => Conversion.Type.HasFlag(ConversionType.Formula) ? Conversion.Formula.CoeffC / Conversion.Formula.CoeffF : 0;
         public TableNumericConversion Table => Conversion.Type.HasFlag(ConversionType.TableNumeric) ? Conversion.TableNumeric : null;
 
         internal DbcMessage Parent { get; set; }
@@ -206,8 +101,8 @@ namespace InfluxShared.FileObjects
     public class DBC
     {
         public DBCFileType FileType { get; set; }
-        public string FileName { get; set; }
-        public string FileNameSerialized { get; set; }  //Imeto na DBC-to zapisano kato serialized file
+        public string FileName { get; set; } = "";
+        public string FileNameSerialized { get; set; } = "";  //Imeto na DBC-to zapisano kato serialized file
         public string FileNameNoExt => Path.GetFileNameWithoutExtension(FileName);
         public string FileLocation => Path.GetDirectoryName(FileName);
         public List<DbcMessage> Messages { get; set; }
@@ -227,23 +122,31 @@ namespace InfluxShared.FileObjects
             Messages = new List<DbcMessage>();
         }
 
-        public static DBC CreateMode22(List<PollingItem> ItemList)
+        public static DBC CreateMode(List<PollingItem> ItemList, byte UDSService)
         {
             DBC dbc = new DBC();
-            var groupedItems = ItemList.GroupBy(i => i.RxIdent).Select(grp => grp.ToList()).ToList();
+            var groupedItems = ItemList.Where(uds => uds.UDSServiceID == UDSService).GroupBy(i => i.RxIdent).Select(grp => grp.ToList()).ToList();
             foreach (var items in groupedItems)
             {
-                var msg = new DbcMessage() { Name = "Mode 0x22", CANID = items[0].RxIdent, DLC = 8, MsgType = DBCMessageType.Standard };
+                var msg = new DbcMessage()
+                {
+                    Name = "Mode 0x" + UDSService.ToString("X2"),
+                    CANID = items[0].RxIdent,
+                    DLC = 8,
+                    MsgType = DBCMessageType.Standard
+                };
+
                 dbc.Messages.Add(msg);
                 msg.Items.Add(new DbcItem()
                 {
-                    Name = "mode",
+                    Name = "mode" + UDSService.ToString("X2"),
                     ItemType = 0,
-                    StartBit = 16,
-                    BitCount = 16,
+                    StartBit = 0,
+                    BitCount = 40,
                     ByteOrder = DBCByteOrder.Intel,
                     Type = DBCSignalType.Mode,
                     ValueType = DBCValueType.Unsigned,
+                    UDS = UDSService,
                 });
 
                 foreach (var sig in items)
@@ -251,10 +154,22 @@ namespace InfluxShared.FileObjects
                     DbcItem newSig = new DbcItem();
                     sig.CopyProperties(newSig);
                     newSig.Type = DBCSignalType.ModeDependent;
-                    newSig.Mode = ((sig.Ident >> 8) | (sig.Ident << 8)) & 0xFFFF;
+                    newSig.UDS = UDSService;
+                    if (UDSService == 0x22)
+                        //newSig.Mode = (UInt64)(sig.Ident & 0xFFFF) << 8 | 0x62;
+                        newSig.Mode = 0x62 |
+                            (UInt64)(sig.Ident & 0x00FF) << 16 |
+                            (sig.Ident & 0xFF00);
+                    else if (UDSService == 0x23)
+                        //newSig.Mode = (UInt64)(sig.Ident & 0xFFFFFFFF) << 8 | 0x63;
+                        newSig.Mode = 0x63 |
+                            (UInt64)(sig.Ident & 0x000000FF) << 32 | (sig.Ident & 0x0000FF00) << 16 | 
+                            (sig.Ident & 0x00FF0000) | (sig.Ident & 0xFF000000) >> 16;
+
                     newSig.Ident = sig.RxIdent;
-                    newSig.StartBit += 32;
+                    newSig.StartBit += (UInt16)(msg.Items[0].StartBit + msg.Items[0].BitCount);
                     msg.Items.Add(newSig);
+                    msg.DLC = (byte)Math.Max(msg.DLC, (newSig.StartBit + newSig.BitCount + 7) / 8);
                 }
             }
 
@@ -277,17 +192,24 @@ namespace InfluxShared.FileObjects
 
     public class ExportDbcMessage
     {
+        public class Multiplex
+        {
+            public ICanSignal multiplexor = null;
+            public BinaryData multiplexorData = null;
+            // Multiplexor map is dictionary with pair - mode value and list of signal indexes
+            public Dictionary<UInt64, List<UInt16>> multiplexorMap = null;
+            // Mode dependant group ids
+            public List<UInt64> multiplexorGroups = null;
+
+            public List<ICanSignal> Signals;
+        }
+
         public UInt64 uniqueid { get; set; }
         public byte BusChannel { get; set; }
         public DbcMessage Message { get; set; }
         public List<ICanSignal> Signals { get; set; }
 
-        public ICanSignal multiplexor = null;
-        public BinaryData multiplexorData = null;
-        // Multiplexor map is dictionary with pair - mode value and list of signal indexes
-        public Dictionary<UInt16, List<UInt16>> multiplexorMap = null;
-        // Mode dependant group ids
-        public List<UInt64> multiplexorGroups = null;
+        public Dictionary<byte, Multiplex> MultiplexDict = new() { { 0, new() } };
 
         public static bool operator ==(ExportDbcMessage item1, ExportDbcMessage item2) => item1.BusChannel == item2.BusChannel && item1.Message.EqualProps(item2.Message);
         public static bool operator !=(ExportDbcMessage item1, ExportDbcMessage item2) => !(item1 == item2);
@@ -302,35 +224,42 @@ namespace InfluxShared.FileObjects
         public void AddSignal(ICanSignal Signal)
         {
             Signals.Add(Signal);
-            multiplexor = GetMode();
-            if (multiplexor is not null)
-                multiplexorData = multiplexor.GetDescriptor.CreateBinaryData();
+            Multiplex mp;
+            if (!MultiplexDict.TryGetValue(Signal.UDS, out mp))
+                MultiplexDict.Add(Signal.UDS, mp = new());
+
+            mp.multiplexor = GetMode(Signal.UDS);
+            if (mp.multiplexor is not null)
+                mp.multiplexorData = mp.multiplexor.GetDescriptor.CreateBinaryData();
         }
 
-        public ICanSignal GetMode()
+        public ICanSignal GetMode(byte uds = 0)
         {
-            if (Signals[0].Type == DBCSignalType.Mode)
+            Multiplex mp = MultiplexDict[uds];
+            mp.Signals = Signals.Where(s => s.UDS == uds).ToList();
+
+            if (mp.Signals[0].Type == DBCSignalType.Mode)
             {
-                multiplexorMap =
-                    Signals.Where(sg => sg.Type == DBCSignalType.ModeDependent).
+                mp.multiplexorMap =
+                    mp.Signals.Where(sg => sg.Type == DBCSignalType.ModeDependent).
                     GroupBy(md => md.Mode,
-                    (k, c) => new { ModeValue = (UInt16)k, Indexes = c.Select(cs => (UInt16)Signals.IndexOf(cs)).ToList() }).
+                    (k, c) => new { ModeValue = (UInt64)k, Indexes = c.Select(cs => (UInt16)mp.Signals.IndexOf(cs)).ToList() }).
                     ToDictionary(d => d.ModeValue, d => d.Indexes);
 
-                return Signals[0];
+                return mp.Signals[0];
             }
             else
             {
-                ICanSignal mode = Signals.FirstOrDefault(s => s.Type == DBCSignalType.Mode);
+                ICanSignal mode = mp.Signals.FirstOrDefault(s => s.Type == DBCSignalType.Mode);
                 if (mode is not null)
                 {
-                    Signals.Remove(mode);
-                    Signals.Insert(0, mode);
+                    mp.Signals.Remove(mode);
+                    mp.Signals.Insert(0, mode);
 
-                    multiplexorMap =
-                        Signals.Where(sg => sg.Type == DBCSignalType.ModeDependent).
+                    mp.multiplexorMap =
+                        mp.Signals.Where(sg => sg.Type == DBCSignalType.ModeDependent).
                         GroupBy(md => md.Mode,
-                        (k, c) => new { ModeValue = (UInt16)k, Indexes = c.Select(cs => (UInt16)Signals.IndexOf(cs)).ToList() }).
+                        (k, c) => new { ModeValue = (UInt64)k, Indexes = c.Select(cs => (UInt16)mp.Signals.IndexOf(cs)).ToList() }).
                         ToDictionary(d => d.ModeValue, d => d.Indexes);
                 }
                 return mode;
@@ -339,16 +268,15 @@ namespace InfluxShared.FileObjects
 
         public UInt16 FindMultiplexorIndex(DbcItem signal)
         {
-            var keys = multiplexorMap.Where(pair => pair.Value.Contains((ushort)Signals.IndexOf(signal))).
+            Multiplex mp = MultiplexDict[signal.UDS];
+            var keys = mp.multiplexorMap.Where(pair => pair.Value.Contains((ushort)mp.Signals.IndexOf(signal))).
                 Select(pair => pair.Key);
 
             if (keys.Count() > 0)
-                return (UInt16)multiplexorMap.Keys.ToList().IndexOf(keys.First());
+                return (UInt16)mp.multiplexorMap.Keys.ToList().IndexOf(keys.First());
             else
                 return UInt16.MaxValue;
         }
-
-        public UInt32 CalcInvalidationBitCount => (uint)(multiplexorMap is null ? 0 : (multiplexorMap.Count() + 7) >> 3);
     }
 
     public class ExportDbcCollection : List<ExportDbcMessage>

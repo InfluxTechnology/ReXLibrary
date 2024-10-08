@@ -92,6 +92,19 @@ namespace DbcParserLib.Influx
                     sigI.Conversion.Formula.CoeffB = sig.Factor;
                     sigI.Conversion.Formula.CoeffC = sig.Offset;
                     sigI.Conversion.Formula.CoeffF = 1;
+                    if (sig.TableNumeric is not null && sig.TableNumeric.Count > 0)
+                    {
+                        sigI.Conversion.Type = ConversionType.FormulaAndTableNumeric;
+                        foreach (var pair in sig.TableNumeric)
+                            sigI.Conversion.TableNumeric.Add(pair.Key, pair.Value);
+                    }
+                    else if (sig.TableVerbal is not null && sig.TableVerbal.Count > 0)
+                    {
+                        sigI.Conversion.Type = ConversionType.FormulaAndTableVerbal;
+                        foreach (var pair in sig.TableVerbal)
+                            sigI.Conversion.TableVerbal.Add(pair.Key, pair.Value);
+
+                    }
                     sigI.Type = DBCSignalType.Standard;
                     if (sig.Multiplexing is not null && sig.Multiplexing.Length > 0)
                     {

@@ -15,7 +15,7 @@ namespace InfluxShared.FileObjects
         public ushort StartBit { get; set; }
         public ushort BitCount { get; set; }
         public DBCSignalType Type { get; set; }
-        public UInt32 Mode { get; set; }   //If the signal is Mode Dependent
+        public UInt64 Mode { get; set; }   //If the signal is Mode Dependent
         public DBCByteOrder ByteOrder { get; set; }
         public DBCValueType ValueType { get; set; }
 
@@ -26,6 +26,7 @@ namespace InfluxShared.FileObjects
         public bool EqualProps(object item);
         public ChannelDescriptor GetDescriptor { get; }
         public bool Log { get; set; }
+        public byte UDS { get; set; }
 
 
     }

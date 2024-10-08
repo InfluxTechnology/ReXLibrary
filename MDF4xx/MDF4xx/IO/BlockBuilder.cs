@@ -522,22 +522,21 @@ namespace MDF4xx.IO
                         msg.Message.DLC
                     );
 
-                    if (msg.multiplexor is not null && msg.multiplexorMap is not null)
-                    {
-                        msg.multiplexorGroups = new();
-                        UInt16 id = 0;
-                        foreach (var mg in msg.multiplexorMap)
+                    foreach (var mp in msg.MultiplexDict)
+                        if (mp.Value.multiplexor is not null && mp.Value.multiplexorMap is not null)
                         {
-                            id++;
-                            AllocateGroupID();
-                            msg.multiplexorGroups.Add(groupid);
-                            AddDbcChannelGroup(
-                                "CAN" + msg.BusChannel.ToString() + "." + msg.Message.Name + ".mode" + mg.Key.ToString(),
-                                msg.Signals.Where(x => mg.Value.Contains((ushort)msg.Signals.IndexOf(x))),
-                                msg.Message.DLC
-                            );
+                            mp.Value.multiplexorGroups = new();
+                            foreach (var mg in mp.Value.multiplexorMap)
+                            {
+                                AllocateGroupID();
+                                mp.Value.multiplexorGroups.Add(groupid);
+                                AddDbcChannelGroup(
+                                    "CAN" + msg.BusChannel.ToString() + "." + msg.Message.Name + ".mode" + mp.Key.ToString("X2") + "." + mg.Key.ToString(),
+                                    mp.Value.Signals.Where(x => mg.Value.Contains((ushort)mp.Value.Signals.IndexOf(x))),
+                                    msg.Message.DLC
+                                );
+                            }
                         }
-                    }
                 }
 
             if (exSignals.ldfCollection is not null)

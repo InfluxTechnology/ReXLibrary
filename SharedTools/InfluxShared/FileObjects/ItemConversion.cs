@@ -79,7 +79,7 @@ namespace InfluxShared.FileObjects
         public double CoeffC { get; set; }
         public double CoeffD { get; set; }
         public double CoeffE { get; set; }
-        public double CoeffF { get; set; }
+        public double CoeffF { get; set; } = 1;
 
         public override string ToString()
         {
@@ -108,9 +108,9 @@ namespace InfluxShared.FileObjects
             if (idx > 0)
                 return Values[idx];
 
-            if (x < Keys[0])
+            if (x <= Keys[0])
                 idx = 1;
-            else if (x > Keys[Count - 1])
+            else if (x >= Keys[Count - 1])
                 idx = Count - 1;
             else
                 idx = Keys.FindFirstIndexGreaterThanOrEqualTo(x);
@@ -119,7 +119,7 @@ namespace InfluxShared.FileObjects
         }
     }
 
-    public class TableVerbalConversion
+    public class TableVerbalConversion : SortedList<double, string> 
     {
         public int Count;
         public Dictionary<double, string> Pairs;

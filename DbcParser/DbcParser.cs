@@ -44,6 +44,8 @@ namespace DbcParserLib
         public string Unit { get; set; }
         public string[] Receiver { get; set; }
         public string ValueTable { get; set; }
+        public SortedDictionary<double, double> TableNumeric { get; set; } = null;
+        public SortedDictionary<double, string> TableVerbal { get; set; } = null;
         public string Comment { get; set; }
         public string Multiplexing { get; set; }
         public NameValueCollection AttrValues = new NameValueCollection();

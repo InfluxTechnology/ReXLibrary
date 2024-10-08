@@ -27,22 +27,6 @@ namespace DbcParserLib
             return signal.Lsb();
         }
 
-        public static IEnumerable<KeyValuePair<int, string>> ToPairs(this Signal signal)
-        {
-            if (string.IsNullOrWhiteSpace(signal.ValueTable))
-                yield break;
-
-            using (var reader = new StringReader(signal.ValueTable))
-            {
-                while (reader.Peek() > -1)
-                {
-                    var tokens = reader.ReadLine().Split(' ');
-                    yield return new KeyValuePair<int, string>(int.Parse(tokens[0]), tokens[1]);
-                }
-            }
-        }
-
-
         private const string MultiplexorLabel = "M";
         private const string MultiplexedLabel = "m";
 
