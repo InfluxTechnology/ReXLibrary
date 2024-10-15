@@ -61,9 +61,6 @@ namespace RXD.Base
             using (RXDataReader dr = new RXDataReader(this as BinRXD, ReadLogic.UpdateLowestTimestamp))
                 while (dr.ReadNext()) ;
 
-            //var bins = this.Where(b => b.Value.DataFound);
-            //LowestTimestamp = (UInt32?)bins.Min(b => b.Value.FirstTimestamp) ?? 0;
-
             bool ContainOverlap = this.Any(b => b.Value.TimeOverlap);
             var bins = ContainOverlap ? this.Where(b => b.Value.DataFound && b.Value.TimeOverlap) : this.Where(b => b.Value.DataFound);
             if (bins.Count() > 0)
@@ -74,16 +71,12 @@ namespace RXD.Base
                 var BinsAfterOverlap = this.Where(b => b.Value.DataFound && !b.Value.TimeOverlap && b.Value.LastTimestamp < FirstTimestamp);
                 foreach (var b in BinsAfterOverlap)
                     b.Value.AddOverlap = true;
-            }
 
-            /*/foreach (var bin in bins)
-                if (firsttime)
-                {
-                    LowestTimestamp = bin.Value.FirstTimestamp;
-                    firsttime = false;
-                }
-                else if (bin.Value.FirstTimestamp < LowestTimestamp)
-                    LowestTimestamp = bin.Value.FirstTimestamp;*/
+                UInt32 LastTimestamp = (UInt32?)bins.Max(b => b.Value.LastTimestamp) ?? 0;
+                var BinsBeforeOverlap = this.Where(b => b.Value.DataFound && !b.Value.TimeOverlap && b.Value.FirstTimestamp > LastTimestamp);
+                if (BinsBeforeOverlap.Count() > 0)
+                    FirstTimestamp = Math.Min(FirstTimestamp, (UInt32?)BinsBeforeOverlap.Min(b => b.Value.FirstTimestamp) ?? FirstTimestamp);
+            }
         }
 
         public void OffsetTimestamps(Int64 TimeOffset)
